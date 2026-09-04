@@ -1,0 +1,13 @@
+# A LIST constraint. The value is the decision, which is why this one is written
+# out rather than looped over with the boolean set (Appendix C).
+#
+# Applied at a FOLDER, not the organization, unless the whole estate is
+# genuinely single-jurisdiction (31.2). Value groups are the maintainable form:
+# `in:us-locations` tracks Google's own membership as regions are added.
+name: folders/FOLDER_ID/policies/gcp.resourceLocations
+spec:
+  rules:
+    - values:
+        allowedValues:
+          - in:us-locations
+          - in:eu-locations

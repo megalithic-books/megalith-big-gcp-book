@@ -1,0 +1,37 @@
+{
+  "_comment": [
+    "An IAM deny policy, as shown in 3.17. Deny rules are evaluated BEFORE allow",
+    "policies and cannot be overridden by one, which makes them the only way to",
+    "subtract a permission from a grant inherited down the hierarchy (3.1).",
+    "",
+    "Attach with:",
+    "  gcloud iam policies create deny-production-deletion \\",
+    "    --attachment-point=cloudresourcemanager.googleapis.com/organizations/123456789012 \\",
+    "    --kind=denypolicies --policy-file=iam-deny-policy.json",
+    "",
+    "The exception principal is a break-glass GROUP, not a person, and its use is",
+    "what the alert in 34.5 watches for. The denial condition scopes the rule to",
+    "production by tag, so a sandbox project is unaffected."
+  ],
+  "displayName": "Deny deletion of production projects and folders",
+  "rules": [
+    {
+      "denyRule": {
+        "deniedPrincipals": [
+          "principalSet://goog/public:all"
+        ],
+        "exceptionPrincipals": [
+          "principalSet://goog/group/gcp-breakglass@rickcollette.domain"
+        ],
+        "deniedPermissions": [
+          "cloudresourcemanager.googleapis.com/projects.delete",
+          "cloudresourcemanager.googleapis.com/folders.delete"
+        ],
+        "denialCondition": {
+          "title": "production-only",
+          "expression": "resource.matchTag('123456789012/environment', 'production')"
+        }
+      }
+    }
+  ]
+}

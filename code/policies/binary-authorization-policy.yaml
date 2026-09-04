@@ -1,0 +1,31 @@
+# Binary Authorization policy, imported with:
+#   gcloud container binauthz policy import binary-authorization-policy.yaml \
+#     --strict-validation
+#
+# Two enums decide behaviour and they are INDEPENDENT (25.10):
+#   evaluationMode  -- what the rule requires
+#   enforcementMode -- whether a failure blocks or only logs
+#
+# Roll out with DRYRUN_AUDIT_LOG_ONLY first. It produces an audit log entry for
+# every deployment that WOULD have been blocked, which is the same discipline a
+# VPC Service Controls perimeter gets (20.8) and for the same reason: the things
+# that break first are all legitimate.
+defaultAdmissionRule:
+  evaluationMode: REQUIRE_ATTESTATION
+  enforcementMode: DRYRUN_AUDIT_LOG_ONLY
+  requireAttestationsBy:
+    - projects/rc-saas-shared-sec-01/attestors/attestor-build
+    - projects/rc-saas-shared-sec-01/attestors/attestor-scan
+    - projects/rc-saas-shared-sec-01/attestors/attestor-prod-release
+
+# Every pattern here bypasses evaluation ENTIRELY. This is where policies
+# quietly die: a pattern broad enough to cover a whole registry admits anything
+# anyone can push to it (25.10). Keep the list short and reviewed.
+admissionWhitelistPatterns: []
+
+clusterAdmissionRules:
+  us-central1-a.rc-saas-prod-gke-01:
+    evaluationMode: REQUIRE_ATTESTATION
+    enforcementMode: ENFORCED_BLOCK_AND_AUDIT_LOG
+    requireAttestationsBy:
+      - projects/rc-saas-shared-sec-01/attestors/attestor-prod-release

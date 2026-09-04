@@ -1,0 +1,16 @@
+# Pod Security Admission, set per namespace. 9.14 owns the argument; this is the
+# shape. PSA replaced PodSecurityPolicy and is enforced by the API server, so it
+# needs no controller and cannot be bypassed by a workload.
+#
+# Three modes run independently: `enforce` rejects, `audit` records, `warn`
+# returns a message to the client. Set audit and warn to the level you intend to
+# enforce NEXT, so you can see what would break before it does.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: app-prod
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted

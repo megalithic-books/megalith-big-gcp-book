@@ -1,0 +1,53 @@
+# The convergence playbook. Terraform owns whether an instance EXISTS; this owns
+# what is true INSIDE it, and the handoff between them is a label Terraform sets
+# and the dynamic inventory reads (28.22).
+#
+#   ansible-playbook -i ../inventory/prod.gcp_compute.yml playbooks/site.yml
+#
+# Run it on a SCHEDULE, not only at build time. A hardening role that runs once
+# converges an image, not a fleet: an operator edits a file during an incident, a
+# package upgrade replaces one, and the role's assertions are what turn that
+# drift into detection (28.12, 28.21).
+---
+- name: Converge the host baseline
+  hosts: all
+  become: true
+
+  # No google.cloud resource module supports check mode -- all 79 that declare it
+  # are *_info modules -- so `--check` skips provisioning tasks entirely. Every
+  # module this play uses does support it, which is why the baseline is
+  # verifiable this way and provisioning is not (28.2).
+  #
+  #   ansible-playbook --check --diff ... reports exactly what would change.
+  roles:
+    - os-baseline
+
+- name: Prove the baseline rather than assume it
+  hosts: all
+  become: true
+  gather_facts: false
+
+  # A converged host and a verified host are different claims, and an auditor
+  # wants the second (29.11). The role asserts sshd; this asserts the kernel
+  # parameters, reading them back from the running kernel rather than from the
+  # file that was written.
+  tasks:
+    - name: Read back the enforced kernel parameters
+      ansible.builtin.command:
+        cmd: "sysctl -n {{ item.name }}"
+      loop: "{{ os_baseline_sysctls }}"
+      register: os_baseline_sysctl_effective
+      changed_when: false
+      check_mode: false
+
+    - name: Assert every kernel parameter holds its enforced value
+      ansible.builtin.assert:
+        that:
+          - item.stdout | trim == item.item.value
+        fail_msg: >-
+          {{ item.item.name }} is {{ item.stdout | trim }} on {{ inventory_hostname }},
+          expected {{ item.item.value }}
+        success_msg: "{{ item.item.name }} = {{ item.stdout | trim }}"
+      loop: "{{ os_baseline_sysctl_effective.results }}"
+      loop_control:
+        label: "{{ item.item.name }}"

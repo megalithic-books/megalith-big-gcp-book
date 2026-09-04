@@ -1,0 +1,47 @@
+# GitHub Actions deploying to GCP with Workload Identity Federation. This is the
+# canonical replacement for a service account key in CI (4.7), and the
+# configuration most often done insecurely.
+#
+# THE SECURITY IS IN THE ATTRIBUTE CONDITION ON THE PROVIDER, not in this file.
+# Pin the NUMERIC repository_id. Name-based claims such as `repository` and
+# `repository_owner` invite typosquatting: a deleted organization name can be
+# re-registered by someone else and your condition would then match their
+# repository. Numeric IDs cannot be reclaimed (4.7).
+---
+name: deploy-prod
+
+on:
+  push:
+    branches: [main]
+
+# id-token: write is what lets the runner request the OIDC assertion. Without it
+# the exchange fails with a confusing "unable to get credentials" error.
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production      # the human approval gate (25.4)
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          # Project NUMBER, not project ID. Automation that templates the
+          # project ID into this string produces a binding that silently
+          # matches nothing (4.3).
+          workload_identity_provider: projects/123456789012/locations/global/workloadIdentityPools/github-prod/providers/github-prod-provider
+          service_account: sa-deploy-prod@rc-saas-shared-cicd-01.iam.gserviceaccount.com
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy
+        run: |
+          gcloud run deploy api \
+            --project=rc-saas-prod-app-01 \
+            --region=us-central1 \
+            --image=us-central1-docker.pkg.dev/rc-saas-prod-app-01/rc-saas-app/api@${IMAGE_DIGEST} \
+            --no-allow-unauthenticated

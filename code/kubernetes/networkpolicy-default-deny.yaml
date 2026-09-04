@@ -1,0 +1,42 @@
+# Default-deny ingress and egress for a namespace. Without this, every pod in
+# the cluster can reach every other pod: Kubernetes' default is flat (9.15).
+#
+# NetworkPolicy is namespaced and additive -- policies union, they do not
+# override. So a default-deny plus a narrow allow is the composition, and the
+# order they are applied in does not matter.
+#
+# This requires a network policy provider. On GKE that is Dataplane V2 (9.16) or
+# Calico; without one the object is accepted and does nothing, which is the
+# failure mode to test for rather than assume.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: app-prod
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+# The companion allow. DNS is the one egress rule every namespace needs, and
+# forgetting it is why a default-deny "breaks everything" on first application.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-egress
+  namespace: app-prod
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53

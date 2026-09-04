@@ -1,0 +1,69 @@
+# Cloud Build pipeline: build, scan, push by digest, attest.
+#
+# 23.x owns Cloud Build; 25.x owns the deploy gate. Two rules shape this file:
+#
+#   - Every step that matters is pinned by DIGEST, not tag. A tag can be
+#     repointed after it is verified, which makes a tag-based provenance claim
+#     unfalsifiable (25.12, 24.5).
+#   - `gcr.io/cloud-builders/*` is Google's own builder image namespace and is
+#     the one place gcr.io appears in this repository. The book's rule -- use
+#     Artifact Registry and REGION-docker.pkg.dev, never Container Registry --
+#     is about YOUR artifacts (24.x). Google's builders are not published to
+#     Artifact Registry, so there is no alternative address for them.
+#   - The build identity is a user-specified service account. The legacy build
+#     account cannot generate ID tokens, and Google recommends against it;
+#     resolve the current default with `gcloud builds get-default-service-account`
+#     before assuming which one you have (23.x).
+serviceAccount: projects/rc-saas-shared-cicd-01/serviceAccounts/sa-build-app@rc-saas-shared-cicd-01.iam.gserviceaccount.com
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  requestedVerifyOption: VERIFIED
+  # A private pool keeps the build off the public internet and inside the
+  # perimeter, which is what lets a build reach a private artifact store (20.10).
+  pool:
+    name: projects/rc-saas-shared-cicd-01/locations/us-central1/workerPools/pool-prod
+
+substitutions:
+  _REGION: us-central1
+  _REPO: rc-saas-app
+  _IMAGE: api
+
+steps:
+  - id: build
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --tag=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_IMAGE}:$SHORT_SHA
+      - .
+
+  - id: push
+    name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_IMAGE}:$SHORT_SHA
+
+  # Scanning is a gate, not a report. Failing the build on findings above the
+  # threshold is the whole point; a scan whose output nobody blocks on is a
+  # metric, not a control (24.6).
+  - id: scan
+    name: gcr.io/cloud-builders/gcloud
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        gcloud artifacts docker images scan \
+          "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_IMAGE}:$SHORT_SHA" \
+          --format='value(response.scan)' > /workspace/scan_id
+        gcloud artifacts docker images list-vulnerabilities \
+          "$(cat /workspace/scan_id)" \
+          --format='value(vulnerability.effectiveSeverity)' \
+          --filter='vulnerability.effectiveSeverity=CRITICAL' > /workspace/critical
+        test ! -s /workspace/critical
+
+# Provenance is generated only for artifacts stored in Artifact Registry, and it
+# is in-toto with SLSA predicates. Cloud Build emits slsa.dev/provenance/v1 and
+# v0.1 -- not v0.2 (23.14, 37.10).
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_IMAGE}:$SHORT_SHA

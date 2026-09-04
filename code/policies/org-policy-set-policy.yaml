@@ -1,0 +1,11 @@
+# `gcloud org-policies set-policy` takes a YAML or JSON document. There is no
+# `allow` or `deny` subcommand -- every write goes through set-policy and a file
+# (31.1), which is also what makes a baseline diffable in review.
+#
+#   gcloud org-policies set-policy org-policy-set-policy.yaml
+#
+# The constraint is named WITHOUT the constraints/ prefix in the `name` field.
+name: organizations/123456789012/policies/compute.requireOsLogin
+spec:
+  rules:
+    - enforce: true

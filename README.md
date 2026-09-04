@@ -17,59 +17,59 @@ to by path, plus the corrections and version notes that accumulate after a book 
 
 ## The code
 
-Long, reusable examples live here rather than in the book, so that a page of print is not spent on
+Long, reusable examples live here rather than in the book, so a page of print is not spent on
 something you would copy rather than read. Short illustrative snippets stay inline in the chapters.
 
 ```
 code/
   tf/
     network/              Shared VPC host network: subnets, secondary ranges, flow logs (§5.28, §26.28)
-    org-policy-baseline/  The organization policy manifest of Appendix C
     project-iam/          Additive-only project IAM bindings (§3.11, §26.29)
+    org-policy-baseline/  The organization policy manifest of Appendix C
+    environments/prod/    Root module composing the three — the thing you run (§26.5, §26.18)
+  opentofu/
+    state-encryption/     Client-side state and plan encryption (§27.5, §27.11)
   ansible/
     inventory/            Dynamic inventory (gcp_compute) and group vars (§28.3)
+    playbooks/site.yml    Convergence, plus read-back assertions (§28.12, §28.21)
     roles/os-baseline/    The CIS-derived host baseline (§28.12)
     requirements.yml      Collections pinned to the verified versions
+  kubernetes/             Pod Security Admission, default-deny NetworkPolicy,
+                          Workload Identity ServiceAccount (§9.11, §9.14, §9.15)
+  policies/               Org policy set-policy documents, Binary Authorization
+                          policy, IAM deny policy (§3.17, §25.10, §31.1)
+  cicd/                   Cloud Build pipeline and GitHub Actions with WIF (§4.7, §23.x)
+  scripts/                Read-back verification of the baseline (§31.1, §29.11)
 ```
 
 **Chapters reference these by path.** When a section says the configuration is in
 `code/tf/network/`, that is this directory.
 
-## What this is, and what it is not
+## Standing it up
 
-**These are the reusable modules the chapters point at. They are not a landing zone, and running
-them will not stand up the estate the book describes.**
+`code/tf/environments/prod/` is the **root module** — it owns the backend and the provider, and it
+composes the three child modules. That is what you run:
 
-The Terraform directories are **child modules**: each declares a minimum provider version and
-configures no provider and no backend, because the root module owns both (§26.5). To use them you
-supply the composition — a root module per environment, with its own backend and state, as §26.5
-sets out:
-
-```text
-terraform/
-  environments/
-    prod/   backend.tf  main.tf  terraform.tfvars  versions.tf
+```bash
+cd code/tf/environments/prod
+cp terraform.tfvars.example terraform.tfvars   # then replace every value
+terraform init
+terraform plan
 ```
 
-That composition is deliberately not shipped here. The backend bucket, the project IDs, the CIDR
-allocation, and the organization ID are estate-specific, and a module that invents them is a module
-that collides with something you already have (§5.6).
+The child modules under `code/tf/` declare a minimum provider version and configure **no provider
+and no backend**, because a module that pins either cannot be composed (§26.5). The state bucket
+named in `backend.tf` is created by the bootstrap layer, not by this configuration — a root module
+cannot create the backend it is already using (§2.21, §26.14).
 
-**Appendix A gives seven estate layouts.** None of them is provided as runnable code. They are
-designs to build from, and the chapter that owns each mechanic is cited from the appendix.
+**The organization policy baseline changes behavior estate-wide.** Roll it out with `dry_run_spec`
+first, read the violations out of the audit log, then enforce — the same discipline a VPC Service
+Controls perimeter gets, and for the same reason: the things that break first are all legitimate
+(§20.8, §31.1).
 
-### Roughly, what is here
-
-| The book covers | Code here |
-|---|---|
-| Networking, Shared VPC | `code/tf/network/` |
-| IAM bindings | `code/tf/project-iam/` |
-| Organization policy | `code/tf/org-policy-baseline/` |
-| Host configuration | `code/ansible/roles/os-baseline/`, `code/ansible/inventory/` |
-| GKE, Cloud Run, storage, databases, KMS, Secret Manager, logging, monitoring, CI/CD, supply chain | **the chapters, inline** |
-
-The chapters carry working `gcloud` and HCL for those services; what is not here is a packaged
-module for each. If you want one, the chapter that describes the service is the specification.
+**Appendix A's seven estate layouts are designs, not configurations.** They differ in folder
+structure and scale rather than in resource definitions; these modules are the pieces each is
+assembled from.
 
 ## Running any of this
 
