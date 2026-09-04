@@ -23,30 +23,64 @@ something you would copy rather than read. Short illustrative snippets stay inli
 ```
 code/
   tf/
-    network/              Shared VPC host network: subnets, secondary ranges, flow logs
+    network/              Shared VPC host network: subnets, secondary ranges, flow logs (§5.28, §26.28)
     org-policy-baseline/  The organization policy manifest of Appendix C
-    project-iam/          Additive-only project IAM bindings
+    project-iam/          Additive-only project IAM bindings (§3.11, §26.29)
   ansible/
-    inventory/            Dynamic inventory (gcp_compute) and group vars
-    roles/os-baseline/    The CIS-derived host baseline of 28.12
+    inventory/            Dynamic inventory (gcp_compute) and group vars (§28.3)
+    roles/os-baseline/    The CIS-derived host baseline (§28.12)
+    requirements.yml      Collections pinned to the verified versions
 ```
 
-**The Terraform directories are child modules.** They declare a minimum provider version and
-configure no provider and no backend — the root module owns both. That is deliberate: a module
-that pins a provider or names a backend cannot be composed. See 26.27–26.34 for the module design
-argument.
+**Chapters reference these by path.** When a section says the configuration is in
+`code/tf/network/`, that is this directory.
 
-Every complete example pins `hashicorp/google` at `~> 8.0`.
+## What this is, and what it is not
 
-### Running them
+**These are the reusable modules the chapters point at. They are not a landing zone, and running
+them will not stand up the estate the book describes.**
 
-These are teaching modules, not a landing zone. They are written against the book's two reference
-estates (`rc-saas` and `rc-ent`) and use placeholder identifiers throughout — `PROJECT_ID`,
-`123456789012`, `rickcollette.domain`, and RFC 1918 / RFC 5737 addresses. **Nothing here resolves
-to a real host or a real organization.** Substitute your own before applying anything.
+The Terraform directories are **child modules**: each declares a minimum provider version and
+configures no provider and no backend, because the root module owns both (§26.5). To use them you
+supply the composition — a root module per environment, with its own backend and state, as §26.5
+sets out:
 
-Read the section that introduces a module before you run it. Several of these create resources
-that cost money, and a few — organization policy in particular — change behavior estate-wide.
+```text
+terraform/
+  environments/
+    prod/   backend.tf  main.tf  terraform.tfvars  versions.tf
+```
+
+That composition is deliberately not shipped here. The backend bucket, the project IDs, the CIDR
+allocation, and the organization ID are estate-specific, and a module that invents them is a module
+that collides with something you already have (§5.6).
+
+**Appendix A gives seven estate layouts.** None of them is provided as runnable code. They are
+designs to build from, and the chapter that owns each mechanic is cited from the appendix.
+
+### Roughly, what is here
+
+| The book covers | Code here |
+|---|---|
+| Networking, Shared VPC | `code/tf/network/` |
+| IAM bindings | `code/tf/project-iam/` |
+| Organization policy | `code/tf/org-policy-baseline/` |
+| Host configuration | `code/ansible/roles/os-baseline/`, `code/ansible/inventory/` |
+| GKE, Cloud Run, storage, databases, KMS, Secret Manager, logging, monitoring, CI/CD, supply chain | **the chapters, inline** |
+
+The chapters carry working `gcloud` and HCL for those services; what is not here is a packaged
+module for each. If you want one, the chapter that describes the service is the specification.
+
+## Running any of this
+
+These are teaching modules. They are written against the book's two reference estates (`rc-saas`
+and `rc-ent`) and use placeholder identifiers throughout — `PROJECT_ID`, `123456789012`,
+`rickcollette.domain`, and RFC 1918 / RFC 5737 addresses. **Nothing here resolves to a real host or
+a real organization.** Substitute your own before applying anything.
+
+Read the section that introduces a module before you run it. Several create resources that cost
+money, and the organization policy baseline changes behavior estate-wide — roll it out with
+`dry_run_spec` first (§20.8, §31.1).
 
 ## Reporting an error
 
