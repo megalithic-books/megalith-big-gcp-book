@@ -1,0 +1,65 @@
+# An OS hardening baseline expressed idempotently. 32.1 owns the target state
+# -- which settings, and why. This role owns only how they are enforced and
+# how the enforcement is proved.
+#
+# Every module used here supports check mode with support: full, so
+# `ansible-playbook --check --diff` reports exactly what would change. That is
+# not true of the google.cloud resource modules, none of which support check
+# mode -- which is why this book provisions with Terraform and configures with
+# Ansible.
+---
+- name: Ensure hardening packages are present
+  ansible.builtin.package:
+    name: "{{ os_baseline_packages }}"
+    state: present
+
+- name: Enforce kernel parameters
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    sysctl_file: /etc/sysctl.d/60-hardening.conf
+    reload: true
+    state: present
+  loop: "{{ os_baseline_sysctls }}"
+
+- name: Enforce sshd configuration
+  ansible.builtin.template:
+    src: sshd_config.j2
+    dest: /etc/ssh/sshd_config.d/60-hardening.conf
+    owner: root
+    group: root
+    mode: "0600"
+    # Refuse to install a config sshd would reject. Without this the handler
+    # restarts sshd with a broken file and the host becomes unreachable --
+    # which, over IAP with no console, is an outage.
+    validate: /usr/sbin/sshd -t -f %s
+  notify: Restart sshd
+
+- name: Remove local accounts that OS Login replaces
+  ansible.builtin.user:
+    name: "{{ item }}"
+    state: absent
+    remove: true
+  loop: "{{ os_baseline_absent_users }}"
+
+- name: Ensure auditd is running and enabled
+  ansible.builtin.systemd_service:
+    name: auditd
+    state: started
+    enabled: true
+
+# The assertions below are the role's evidence output. A converged host is not
+# the same claim as a verified host, and 29.11 wants the second one.
+- name: Collect sshd effective configuration
+  ansible.builtin.command:
+    cmd: /usr/sbin/sshd -T
+  register: os_baseline_sshd_effective
+  changed_when: false
+  check_mode: false
+
+- name: Assert password authentication is disabled
+  ansible.builtin.assert:
+    that:
+      - "'passwordauthentication no' in os_baseline_sshd_effective.stdout | lower"
+    fail_msg: "sshd still accepts password authentication on {{ inventory_hostname }}"
+    success_msg: "sshd password authentication is disabled"

@@ -1,0 +1,48 @@
+# Managed by the os-baseline Ansible role. Do not edit on the host.
+#
+# This is a DROP-IN under /etc/ssh/sshd_config.d/, not a replacement for
+# sshd_config (28.12). It is additive, so a package upgrade that rewrites the
+# main file does not fight it. Drop-ins are read in lexical order and the
+# FIRST occurrence of a keyword wins, so the 60- prefix has to sort before any
+# vendor drop-in that would set these keywords more loosely.
+#
+# Deliberately absent: AuthorizedKeysCommand and AuthorizedKeysCommandUser.
+# OS Login installs those and they are how a federated identity resolves to a
+# key (8.19). Overriding them here breaks login for every principal.
+
+# Keys only. The role asserts this value back from `sshd -T`, so changing it
+# here fails the play rather than silently weakening the host.
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PermitEmptyPasswords no
+
+# Root has no interactive login. Administrative access is a federated identity
+# that escalates through sudo, which is auditable (8.19, 8.20).
+PermitRootLogin no
+
+# Reduce the window a stolen or brute-forced credential has.
+MaxAuthTries 4
+MaxSessions 10
+LoginGraceTime 30
+
+# Drop sessions that stop responding, so a disconnected operator does not leave
+# an authenticated channel open.
+ClientAliveInterval 300
+ClientAliveCountMax 2
+
+# Nothing on a server instance needs X11 or agent forwarding. Agent forwarding
+# in particular lets a compromised host use the operator's local key.
+X11Forwarding no
+AllowAgentForwarding no
+
+# TCP forwarding stays ENABLED. IAP TCP forwarding terminates at sshd on this
+# host, and the tooling in 4.18 depends on it; disabling it makes instances with
+# no external IP unreachable.
+AllowTcpForwarding yes
+
+# Log at a level that records the key fingerprint used for each login, which is
+# what an access review reads (17.5).
+LogLevel VERBOSE
+
+Banner none
+PrintMotd no

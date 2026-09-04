@@ -1,0 +1,21 @@
+---
+galaxy_info:
+  role_name: os_baseline
+  author: Rick Collette
+  description: >-
+    CIS-derived host baseline for Compute Engine instances: kernel parameters,
+    sshd drop-in configuration, local account removal, and the read-back
+    assertions that turn convergence into evidence.
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Debian
+      versions: [bookworm, trixie]
+    - name: Ubuntu
+      versions: [jammy, noble]
+
+# ansible.posix supplies the sysctl module. Without it the role fails on its
+# second task with "couldn't resolve module/action".
+dependencies: []
+collections:
+  - ansible.posix

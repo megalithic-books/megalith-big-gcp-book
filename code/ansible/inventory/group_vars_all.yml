@@ -1,0 +1,14 @@
+# Reach VMs that have no external IP through IAP TCP forwarding. The
+# google.cloud.iap connection plugin (added in collection 1.8.0) shells out to
+# `gcloud compute start-iap-tunnel` and runs the stock SSH transport over the
+# resulting local port.
+ansible_connection: google.cloud.iap
+
+# The plugin's default private_key_file is ~/.ssh/google_compute_engine, which
+# is the key OS Login manages. OS Login itself is enabled by instance or
+# project metadata and is Terraform's job, not Ansible's.
+ansible_user: "{{ lookup('env', 'USER') }}"
+
+# The plugin defaults host_key_checking to false. Turn it on: a tunnel to the
+# wrong instance is exactly the case host key checking exists to catch.
+host_key_checking: true

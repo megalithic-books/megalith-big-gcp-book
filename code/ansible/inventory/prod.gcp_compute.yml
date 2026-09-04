@@ -1,0 +1,58 @@
+# The filename suffix is load-bearing: the google.cloud.gcp_compute plugin's
+# verify_file() accepts only gcp.yml, gcp.yaml, gcp_compute.yml, or
+# gcp_compute.yaml. Any other name is silently ignored and Ansible reports an
+# empty inventory rather than an error.
+plugin: google.cloud.gcp_compute
+
+projects:
+  - rc-saas-prod-app-01
+
+# Omitting zones performs an aggregatedList across every zone in the project,
+# which is slow and expensive on a large estate. Name them.
+zones:
+  - us-central1-a
+  - us-central1-b
+  - us-central1-c
+
+# auth_kind is the plugin's only required option. machineaccount uses the
+# controller VM's attached service account, read from the metadata server --
+# no key file anywhere. Use 'application' on a CI runner federating via
+# Workload Identity Federation.
+auth_kind: machineaccount
+
+# Filters use the Compute Engine aggregatedList filter language, not Jinja.
+# Multiple entries are ANDed.
+filters:
+  - 'status = RUNNING'
+  - 'labels.env = prod'
+
+# The default is [public_ip, private_ip, name] -- a public IP first. Every VM
+# in this estate is created without an external address, so the default would
+# silently produce unreachable hosts. Name the instance and set ansible_host
+# from the private address explicitly.
+hostnames:
+  - name
+
+compose:
+  ansible_host: networkInterfaces[0].networkIP
+  # The IAP connection plugin shells out to gcloud compute start-iap-tunnel,
+  # which needs the zone for each host.
+  ansible_gcloud_zone: zone
+
+# Terraform stamps the estate's five mandatory labels on every instance; this
+# turns them into Ansible groups. The API is the interface between the two
+# tools -- there is no generated inventory artifact to keep in sync.
+keyed_groups:
+  - prefix: gcp
+    key: labels.system
+  - prefix: gcp
+    key: labels.env
+  - prefix: gcp
+    key: labels.data_class
+
+groups:
+  webservers: "'web' in (labels.system | default(''))"
+
+# strict makes a bad compose or keyed_groups expression a hard error instead of
+# a silently missing group.
+strict: true

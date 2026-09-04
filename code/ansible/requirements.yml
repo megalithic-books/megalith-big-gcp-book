@@ -1,0 +1,11 @@
+# Collections the playbooks and roles here depend on. Install with:
+#   ansible-galaxy collection install -r code/ansible/requirements.yml
+#
+# Pinned, because the code that configures production must not change silently
+# (§28.20). google.cloud 1.14.0 is the version every example was verified
+# against; ansible.posix supplies the sysctl module the os-baseline role uses.
+---
+collections:
+  - name: google.cloud
+    version: "1.14.0"
+  - name: ansible.posix

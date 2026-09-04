@@ -1,0 +1,12 @@
+# Terraform working state. `terraform init` writes these; they are machine- and
+# run-specific and must never be committed.
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+crash.log
+*.tfvars
+!example.tfvars
+
+# Ansible
+*.retry
