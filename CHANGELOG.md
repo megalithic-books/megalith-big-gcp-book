@@ -22,6 +22,6 @@ in `docs/compatibility.md`.
 - `code/tf/network/` — Shared VPC host network: subnets, GKE secondary ranges, flow logs (§5.28, §26.28)
 - `code/tf/project-iam/` — additive-only project IAM bindings (§3.11, §26.29)
 - `code/tf/org-policy-baseline/` — the Appendix C organization policy manifest as one configuration
-- `code/ansible/inventory/` — `gcp_compute` dynamic inventory and group vars (§28.9)
+- `code/ansible/inventory/` — `gcp_compute` dynamic inventory and group vars (§28.3)
 - `code/ansible/roles/os-baseline/` — the CIS-derived host baseline (§28.12)
 - `code/ansible/requirements.yml` — pinned collections
