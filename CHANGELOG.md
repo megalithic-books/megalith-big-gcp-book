@@ -24,7 +24,9 @@ Covering all eleven repository goals stated in the book's front matter.
 - `code/tf/network/` — Shared VPC host network: subnets, GKE secondary ranges, flow logs (§5.28, §26.28)
 - `code/tf/project-iam/` — additive-only project IAM bindings, basic roles rejected (§3.11, §26.29)
 - `code/tf/org-policy-baseline/` — the Appendix C organization policy manifest
-- `code/tf/environments/prod/` — **root module** composing the three, with backend and provider (§26.5, §26.18)
+- `code/tf/environments/{dev,stg,prod}/` — **root modules**, one backend and state each (§26.5, §26.18)
+- `code/tf/estate/` — folder and project hierarchy for a whole estate, depth-checked and label-validated (§2.8, §2.9, §2.12)
+- `code/tf/estates/` — **Appendix A's seven layouts as tfvars**, A.1 through A.7
 - `code/opentofu/state-encryption/` — client-side state and plan encryption, which Terraform does not have (§27.5, §27.11)
 - `code/ansible/inventory/` — `gcp_compute` dynamic inventory and group vars (§28.3)
 - `code/ansible/playbooks/site.yml` — convergence plus read-back assertions (§28.12, §28.21)
@@ -34,6 +36,7 @@ Covering all eleven repository goals stated in the book's front matter.
 - `code/policies/` — org policy `set-policy` documents, Binary Authorization policy, IAM deny policy (§3.17, §25.10, §31.1)
 - `code/cicd/` — Cloud Build pipeline and GitHub Actions with Workload Identity Federation (§4.7, §23.x)
 - `code/scripts/verify-baseline.sh` — reads the baseline back with `--effective` (§29.11, §31.1)
+- `docs/sources.md` — **every URL the book cites (407 entries, 353 distinct), with its last-validated date**, generated from the book source
 
 Every Terraform and OpenTofu configuration passes `validate`; every YAML and JSON file parses;
 the Ansible role and playbook pass `--syntax-check`; the sshd template is accepted by `sshd -t`;

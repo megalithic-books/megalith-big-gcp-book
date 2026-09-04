@@ -1,0 +1,33 @@
+# Copy to terraform.tfvars and replace every value. Nothing here resolves to a
+# real project or organization: these are the book's reference identifiers.
+#
+# Ranges are the SaaS reference plan of 5.6. Reserve deliberately -- leave gaps
+# between allocations, because the next subnet you need will be adjacent to one
+# you already have.
+
+project_id      = "rc-saas-stg-app-01"
+host_project_id = "rc-saas-shared-net-01"
+region          = "us-central1"
+
+subnets = {
+  "usc1-app" = {
+    region        = "us-central1"
+    primary_range = "10.128.0.0/20"
+    secondary_ranges = {
+      pods     = "10.144.0.0/14"
+      services = "10.148.0.0/20"
+    }
+    flow_log_sampling = 1.0
+  }
+  "euw1-app" = {
+    region        = "europe-west1"
+    primary_range = "10.129.0.0/20"
+  }
+}
+
+# Groups only. Binding a role to an individual user is a finding (3.4), and the
+# module rejects basic roles outright (3.10).
+iam_bindings = {
+  "roles/run.invoker"    = ["group:gcp-app-developers@rickcollette.domain"]
+  "roles/logging.viewer" = ["group:gcp-security-viewers@rickcollette.domain"]
+}

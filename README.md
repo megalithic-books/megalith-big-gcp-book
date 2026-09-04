@@ -10,6 +10,7 @@ to by path, plus the corrections and version notes that accumulate after a book 
 |---|---|
 | `code/tf/` | Terraform / OpenTofu modules referenced from the chapters |
 | `code/ansible/` | Ansible inventory, group vars, and the `os-baseline` role |
+| `docs/sources.md` | **Every URL the book cites, with the date it was last validated** |
 | `docs/errata.md` | Corrections to the printed text |
 | `docs/compatibility.md` | The exact toolchain the book was verified against, and what has moved since |
 | `docs/migrations.md` | What to change when a version moves past what the book verified |
@@ -26,7 +27,9 @@ code/
     network/              Shared VPC host network: subnets, secondary ranges, flow logs (§5.28, §26.28)
     project-iam/          Additive-only project IAM bindings (§3.11, §26.29)
     org-policy-baseline/  The organization policy manifest of Appendix C
-    environments/prod/    Root module composing the three — the thing you run (§26.5, §26.18)
+    environments/          Root modules — dev, stg, prod — the things you run (§26.5, §26.18)
+    estate/                Folder and project hierarchy for a whole estate (§2.8, §2.9)
+    estates/               Appendix A's seven layouts, as tfvars for that module
   opentofu/
     state-encryption/     Client-side state and plan encryption (§27.5, §27.11)
   ansible/
@@ -51,7 +54,7 @@ code/
 composes the three child modules. That is what you run:
 
 ```bash
-cd code/tf/environments/prod
+cd code/tf/environments/prod        # or dev, or stg
 cp terraform.tfvars.example terraform.tfvars   # then replace every value
 terraform init
 terraform plan
@@ -67,9 +70,32 @@ first, read the violations out of the audit log, then enforce — the same disci
 Controls perimeter gets, and for the same reason: the things that break first are all legitimate
 (§20.8, §31.1).
 
-**Appendix A's seven estate layouts are designs, not configurations.** They differ in folder
-structure and scale rather than in resource definitions; these modules are the pieces each is
-assembled from.
+### The seven estates of Appendix A
+
+They are configuration, not just designs. The difference between them is folder structure and
+project count, not resource types, so they are seven **tfvars files** against one module rather than
+seven near-identical configurations:
+
+```bash
+cd code/tf/estates
+terraform plan -var-file=a1-small-saas.tfvars          # 5 folders, 7 projects
+terraform plan -var-file=a5-multi-business-unit.tfvars # 13 folders, 3 levels deep
+```
+
+| Layout | Folders | Depth | Projects |
+|---|---|---|---|
+| `a1-small-saas` | 5 | 2 | 7 |
+| `a2-large-saas` | 8 | 2 | 16 |
+| `a3-small-enterprise` | 8 | 2 | 10 |
+| `a4-large-enterprise` | 9 | 2 | 17 |
+| `a5-multi-business-unit` | 13 | 3 | 10 |
+| `a6-hybrid-cloud` | 6 | 2 | 10 |
+| `a7-multi-cloud` | 5 | 2 | 7 |
+
+Creating an estate is a **bootstrap** activity: it runs once, by a human with impersonation, before
+the pipeline that manages everything else exists (§26.4). The module refuses a folder nested deeper
+than four levels or naming a parent that does not exist, requires the five estate labels on every
+project (§2.12), and caps project IDs at 30 characters (§2.11).
 
 ## Running any of this
 
